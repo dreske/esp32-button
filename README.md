@@ -14,7 +14,7 @@ Only the following pins can be used as inputs on the ESP32:
 
 ## Example Usage
 
-```
+```c
 button_config_t button_config = 
 {
     .pull_mode = GPIO_PULLUP_ONLY,
