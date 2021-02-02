@@ -15,8 +15,13 @@ Only the following pins can be used as inputs on the ESP32:
 ## Example Usage
 
 ```
-button_event_t ev;
-QueueHandle_t button_events = button_init(PIN_BIT(BUTTON_1) | PIN_BIT(BUTTON_2));
+button_config_t button_config = 
+{
+    .pull_mode = GPIO_PULLUP_ONLY,
+    .pin_select = PIN_BIT(BUTTON_1_PIN) | PIN_BIT(BUTTON_2_PIN) | PIN_BIT(BUTTON_3_PIN) | PIN_BIT(BUTTON_4_PIN),
+    .long_down_enabled = 0
+};
+QueueHandle_t button_events = button_init(button_config);
 while (true) {
     if (xQueueReceive(button_events, &ev, 1000/portTICK_PERIOD_MS)) {
         if ((ev.pin == BUTTON_1) && (ev.event == BUTTON_DOWN)) {

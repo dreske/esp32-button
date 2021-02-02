@@ -25,6 +25,8 @@ int pin_count = -1;
 debounce_t * debounce;
 QueueHandle_t queue;
 
+button_config_t _config;
+
 static void update_button(debounce_t *d) {
     d->history = (d->history << 1) | gpio_get_level(d->pin);
 }
@@ -73,7 +75,7 @@ static void button_task(void *pvParameter)
     for (;;) {
         for (int idx=0; idx<pin_count; idx++) {
             update_button(&debounce[idx]);
-            if (debounce[idx].down_time && millis() >= debounce[idx].next_long_time) {
+            if (_config.long_down_enabled && (debounce[idx].down_time && millis() >= debounce[idx].next_long_time)) {
                 ESP_LOGI(TAG, "%d LONG", debounce[idx].pin);
                 debounce[idx].next_long_time = debounce[idx].next_long_time + LONG_PRESS_REPEAT;
                 send_event(debounce[idx], BUTTON_HELD);
@@ -92,31 +94,28 @@ static void button_task(void *pvParameter)
     }
 }
 
-QueueHandle_t button_init(unsigned long long pin_select) {
-    return pulled_button_init(pin_select, GPIO_FLOATING);
-}
-
-
-QueueHandle_t pulled_button_init(unsigned long long pin_select, gpio_pull_mode_t pull_mode)
+QueueHandle_t button_init(button_config_t config)
 {
     if (pin_count != -1) {
         ESP_LOGI(TAG, "Already initialized");
         return NULL;
     }
+    
+    _config = config;
 
     // Configure the pins
     gpio_config_t io_conf;
     io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = (pull_mode == GPIO_PULLUP_ONLY || pull_mode == GPIO_PULLUP_PULLDOWN);
-    io_conf.pull_down_en = (pull_mode == GPIO_PULLDOWN_ONLY || pull_mode == GPIO_PULLUP_PULLDOWN);;
+    io_conf.pull_up_en = (_config.pull_mode == GPIO_PULLUP_ONLY || _config.pull_mode == GPIO_PULLUP_PULLDOWN);
+    io_conf.pull_down_en = (_config.pull_mode == GPIO_PULLDOWN_ONLY || _config.pull_mode == GPIO_PULLUP_PULLDOWN);;
     io_conf.intr_type = GPIO_INTR_DISABLE;
-    io_conf.pin_bit_mask = pin_select;
+    io_conf.pin_bit_mask = _config.pin_select;
     gpio_config(&io_conf);
 
     // Scan the pin map to determine number of pins
     pin_count = 0;
     for (int pin=0; pin<=39; pin++) {
-        if ((1ULL<<pin) & pin_select) {
+        if ((1ULL<<pin) & _config.pin_select) {
             pin_count++;
         }
     }
@@ -128,7 +127,7 @@ QueueHandle_t pulled_button_init(unsigned long long pin_select, gpio_pull_mode_t
     // Scan the pin map to determine each pin number, populate the state
     uint32_t idx = 0;
     for (int pin=0; pin<=39; pin++) {
-        if ((1ULL<<pin) & pin_select) {
+        if ((1ULL<<pin) & _config.pin_select) {
             ESP_LOGI(TAG, "Registering button input: %d", pin);
             debounce[idx].pin = pin;
             debounce[idx].down_time = 0;

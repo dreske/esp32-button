@@ -12,5 +12,10 @@ typedef struct {
     uint8_t event;
 } button_event_t;
 
-QueueHandle_t button_init(unsigned long long pin_select);
-QueueHandle_t pulled_button_init(unsigned long long pin_select, gpio_pull_mode_t pull_mode);
+typedef struct {
+    uint64_t pin_select;
+    uint8_t pull_mode;
+    uint8_t long_down_enabled;
+} button_config_t;
+
+QueueHandle_t button_init(button_config_t config);
